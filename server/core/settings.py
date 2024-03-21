@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     "corsheaders",
 
     "interests",
-    "users"
+    "users",
+    "favorites"
 ]
 
 MIDDLEWARE = [

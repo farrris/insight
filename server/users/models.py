@@ -32,6 +32,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     family_status = models.CharField(choices=FamilyStatus.choices)
     
     interests = models.ManyToManyField("interests.Interest", related_name="users")
+    favorites = models.ManyToManyField("users.User")
 
     registered_at = models.DateTimeField(auto_now_add=True)
 
