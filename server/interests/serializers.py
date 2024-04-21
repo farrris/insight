@@ -10,4 +10,4 @@ class InterestSerializer:
         return InterestOut(
             id=self.resource.pk,
             title=self.resource.title
-        )
+        ).dict()

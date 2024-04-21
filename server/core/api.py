@@ -3,6 +3,7 @@ from ninja_jwt.controller import NinjaJWTDefaultController
 
 from users.controller import UserController
 from favorites.controller import FavoriteController
+from chats.controller import ChatController
 
 api = NinjaExtraAPI(
     title="Insight Backend",
@@ -12,3 +13,4 @@ api = NinjaExtraAPI(
 api.register_controllers(NinjaJWTDefaultController)
 api.register_controllers(UserController)
 api.register_controllers(FavoriteController)
+api.register_controllers(ChatController)

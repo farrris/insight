@@ -40,3 +40,9 @@ class UserOut(Schema):
     family_status: FamilyStatusEnum
     interests: list[InterestOut]
     registered_at: str
+
+class UserShortOut(Schema):
+    id: int
+    username: str
+    name: str
+    surname: str

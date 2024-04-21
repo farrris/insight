@@ -1,4 +1,4 @@
-from users.schemas import UserOut
+from users.schemas import UserOut, UserShortOut
 from users.models import User
 from interests.serializers import InterestSerializer
 
@@ -22,4 +22,12 @@ class UserSerializer:
             family_status=self.resource.family_status,
             interests=interests,
             registered_at=str(self.resource.registered_at)
-        )
+        ).dict()
+    
+    def short(self):
+        return UserShortOut(
+            id=self.resource.pk,
+            username=self.resource.username,
+            name=self.resource.name,
+            surname=self.resource.surname
+        ).dict()

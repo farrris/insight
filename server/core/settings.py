@@ -36,6 +36,7 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,10 +48,12 @@ INSTALLED_APPS = [
     "ninja_jwt",
     "ninja_extra",
     "corsheaders",
+    "channels",
 
     "interests",
     "users",
-    "favorites"
+    "favorites",
+    "chats"
 ]
 
 MIDDLEWARE = [
@@ -148,10 +151,33 @@ from datetime import timedelta
 NINJA_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(weeks=2),
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
 
-     'ALGORITHM': 'HS256',
-     'SIGNING_KEY': os.environ.get("JWT_SECRET_KEY")
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    # 'USER_AUTHENTICATION_RULE': 'ninja_jwt.authentication.default_user_authentication_rule',
+    'AUTH_TOKEN_CLASSES': ('ninja_jwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'ninja_jwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
 }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+ASGI_APPLICATION = 'core.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
