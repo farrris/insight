@@ -1,0 +1,42 @@
+.full-chat {
+    display: flex;
+    flex-direction: column;
+    margin-left: 50px;
+    height: 700px;
+    width: 800px;
+    padding: 10%;
+    border-radius: 34px;
+    padding: 3%;
+    background-color: #fff;
+    border: 1px solid #000;
+    overflow-y: auto;
+}
+
+.message-user-card {
+    background-color: #808080;
+    color: white;
+    width: 30%;
+    margin-bottom: 3%;
+    padding: 3%;
+    border-radius: 34px;
+    padding: 1.5%;
+    border: 1px solid #000;
+}
+
+.message-my-card {
+    background-color: #3f7dfc;
+    color: white;
+    width: 30%;
+    margin-bottom: 3%;
+    padding: 3%;
+    border-radius: 34px;
+    padding: 1.5%;
+    border: 1px solid #000;
+}
+
+.send-message-input {
+    margin-top: 30px;
+    margin-left: 50px;
+    width: 700px;
+
+}

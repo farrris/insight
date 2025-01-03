@@ -1,0 +1,12 @@
+.welcome-text {
+    font-family: "Exo";
+    font-weight: 400;
+    font-size: 48px;
+    color: #8f5849;
+}
+
+.register-text {
+    width: 407px;
+    text-align: center;
+    margin-top: 30px;
+}

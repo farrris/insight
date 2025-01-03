@@ -1,0 +1,18 @@
+body {
+    background-color: #F3F2EF;
+}
+
+.custom-form-input {
+    border: 1px solid #000;
+    border-radius: 90px;
+    width: 407px;
+    height: 54px;
+}
+
+.custom-form-button {
+    border-radius: 90px;
+    width: 407px;
+    height: 51px;
+    background: #3f7dfc;
+}
+
