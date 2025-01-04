@@ -20,8 +20,6 @@ async def conn_health():
             logger.debug("database connect success")
     except Exception as err:
         logger.debug("database connect failed: " + str(err))
-    finally:
-        await engine.dispose()
 
 
 @asynccontextmanager
