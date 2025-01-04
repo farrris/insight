@@ -1,7 +1,7 @@
 import os
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from contextlib import asynccontextmanager
 
 from .logger import logger
@@ -13,6 +13,9 @@ DB_NAME = os.getenv("POSTGRES_DB")
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@db:5432/{DB_NAME}"
 
 engine = create_async_engine(DATABASE_URL)
+
+class Base(DeclarativeBase):
+    pass
 
 async def conn_health():
     try:
