@@ -11,7 +11,8 @@ from core.db import Base, DATABASE_URL
 
 # import models
 
-from common.models import Interest
+from modules.common.models import Interest
+from modules.users.models import User, UserInterest
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

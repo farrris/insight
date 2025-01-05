@@ -2,14 +2,14 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import router as main_router
+from .routes import router as api_router
 
 from .config import *
 
 load_dotenv()
 
 app = FastAPI(
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -20,4 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(main_router)
+app.include_router(api_router)
+
+from .admin import *

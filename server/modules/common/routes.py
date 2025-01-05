@@ -7,7 +7,7 @@ from .schemas import InterestResponseSchema
 from core.logger import logger
 
 router = APIRouter(
-    tags=["Common"],
+    tags=["common"],
     responses={404: {"description": "Not found"}},
 )
 
