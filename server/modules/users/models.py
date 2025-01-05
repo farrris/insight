@@ -1,9 +1,13 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, Boolean, Text, ForeignKey, DateTime, func
+from sqlalchemy import Integer, String, Boolean, Text, ForeignKey, DateTime, func, event
 
 from core.db import Base
 
 from datetime import datetime
+
+from .jwt import get_password_hash
+
+from modules.common.models import Interest
 
 class UserInterest(Base):
 
@@ -33,7 +37,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(128))
-    password: Mapped[str] = mapped_column(String(256))
+    _password: Mapped[str] = mapped_column("password", String(256))
     avatar: Mapped[str] = mapped_column(String(256), nullable=True)
 
     is_admin: Mapped[bool] = mapped_column(Boolean(), default=NOT_ADMIN)
@@ -45,13 +49,13 @@ class User(Base):
     gender: Mapped[str] = mapped_column(String(12))
     about: Mapped[str] = mapped_column(Text(), nullable=True)
 
-    interests = relationship("Interest", secondary=UserInterest.__table__, backref="user", lazy="subquery")
+    interests: Mapped[list[Interest]] = relationship("Interest", secondary=UserInterest.__table__, backref="user", lazy="subquery")
 
     registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def __init__(self, username: str, password: str, name: str, surname: str, city: str, age: int, gender: str, avatar: str|None, about: str|None, is_admin: bool = NOT_ADMIN):
         self.username = username
-        self.password = password
+        self._password = get_password_hash(password)
         self.name = name
         self.surname = surname
         self.city = city
@@ -61,6 +65,13 @@ class User(Base):
         self.about = about
         self.is_admin = is_admin
 
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, password):
+        self._password = get_password_hash(password)
+
     def __repr__(self) -> str:
         return self.username
-

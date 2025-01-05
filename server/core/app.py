@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .routes import router as api_router
 
@@ -21,5 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 from .admin import *
