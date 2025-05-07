@@ -8,6 +8,7 @@ import Chats from "./pages/chats";
 import Profile from "./pages/profile";
 import checkAuth from "./guards/auth"
 import { useNavigate } from "react-router-dom";
+import People from "./pages/people";
 
 const Index = () => {
   if ((checkAuth())) {
@@ -47,6 +48,10 @@ const router = createBrowserRouter([
     {
       path: "/profile",
       element: <Profile />
+    },
+    {
+        path: "/people/:userId",
+        element: <People />
     }
 ]);
 

@@ -1,34 +1,194 @@
 .people-card {
-    width: 65%;
-    margin-bottom: 8%;
-    padding: 10%;
-    border-radius: 34px;
-    padding: 3%;
-    background-color: #fff;
-    border: 1px solid #000;
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    overflow: hidden;
 }
 
-.modal-details-body {
-    padding: 0% 10%;
+.people-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
-.base-info-block-text {
-    font-size: 24px;
-    margin-left: 10%;
+.card-content {
+    padding: 20px;
 }
 
-.people-card-about {
-    margin-top: 5%;
-    font-size: 20px;
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
 }
 
-.interest {
-    margin-top: 2%;
+.avatar {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border: 2px solid #f0f0f0;
+}
+
+.user-details {
+    margin-left: 15px;
+}
+
+.user-details h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #2c3e50;
+}
+
+.user-details p {
+    margin: 5px 0 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.about {
+    color: #34495e;
+    margin: 15px 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.interests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.interest-badge {
     background-color: #3f7dfc;
-    border: 1px solid #000;
     color: white;
-    border-radius: 40px;
-    padding: 1.5%;
-    margin-right: 3%;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
 
+/* Modal Styles */
+.profile-modal-content {
+    padding: 0 10px;
+}
+
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.favorite-btn {
+    cursor: pointer;
+    color: #3f7dfc;
+    font-weight: 500;
+}
+
+.favorite-icon {
+    font-size: 1.1rem;
+}
+
+.favorite-icon.active {
+    color: #f1c40f;
+}
+
+.message-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+.profile-main {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 25px;
+}
+
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 200px;
+}
+
+.large-avatar {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border: 3px solid #f0f0f0;
+    margin-bottom: 15px;
+}
+
+.details-section {
+    flex-grow: 1;
+}
+
+.detail-item {
+    display: flex;
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.detail-label {
+    font-weight: 500;
+    min-width: 80px;
+    color: #7f8c8d;
+}
+
+.about-section h4, .interests-section h4 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.interests-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.interest-tag {
+    background-color: #e8f4ff;
+    color: #3f7dfc;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+/* Message Modal */
+.message-input {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    padding: 12px;
+    resize: none;
+}
+
+.message-input:focus {
+    border-color: #3f7dfc;
+    box-shadow: 0 0 0 0.25rem rgba(63, 125, 252, 0.25);
+}
+
+@media (max-width: 768px) {
+    .profile-main {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .avatar-section {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 20px;
+    }
+
+    .large-avatar {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 0;
+    }
+
+    .profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
 }
