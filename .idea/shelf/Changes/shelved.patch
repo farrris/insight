@@ -1,0 +1,347 @@
+Index: server/modules/users/user_routes.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from fastapi import APIRouter, Form, Depends\nfrom fastapi_filter import FilterDepends\nfrom typing import Annotated\n\nfrom core.db import get_session\nfrom services.storage import upload_file\nfrom .schemas import UserListRequestSchema, UserUpdateRequestSchema, AuthResponseSchema, UserAuthResponseSchema\nfrom .jwt import create_access_token\nfrom .dependencies import get_user_required\n\nfrom .enums import UserGenderEnum\n\nfrom .models import User\nfrom .service import update_user_interest\nfrom .filters import UserFilter\n\nfrom fastapi import UploadFile, File\nfrom sqlalchemy import select\n\nrouter = APIRouter(\n    tags=[\"users\"],\n    prefix=\"/users\"\n)\n\n@router.get(\"/\")\nasync def get_users(\n    user_filter: UserFilter = FilterDepends(UserFilter),\n) -> list[UserListRequestSchema]:\n    async with get_session() as session:\n        query = await session.execute(\n            user_filter.filter(\n                select(User)\n            )\n        )\n\n        users = query.scalars().all()\n\n        return users\n\n@router.post(\"/\")\nasync def create_user(username: str = Form(...), \n                      password: str = Form(...), \n                      name: str = Form(...),\n                      surname: str = Form(...),\n                      city: str = Form(...),\n                      age: int = Form(...), \n                      gender: UserGenderEnum = Form(...),\n                      about: str = Form(None),\n                      avatar: UploadFile = File(None)) -> AuthResponseSchema:\n\n    async with get_session() as session:\n        user = User(\n            username=username,\n            password=password,\n            name=name,\n            surname=surname,\n            city=city,\n            age=age,\n            gender=gender,\n            avatar=upload_file(avatar),\n            about=about\n        )\n\n        session.add(user)\n        await session.commit()\n        await session.refresh(user)\n\n    return AuthResponseSchema(\n        access=create_access_token(user),\n        user=UserAuthResponseSchema.model_validate(user)\n    )\n    \n@router.put(\"/\")\nasync def update_user(body: UserUpdateRequestSchema, current_user: Annotated[User, Depends(get_user_required)]) -> UserAuthResponseSchema:\n    async with get_session() as session:\n        \n        filtered_data = {key: value for key, value in body.model_dump().items() if value is not None}\n\n        for key, value in filtered_data.items():\n            if (key == \"interests\"):\n                await update_user_interest(current_user, body.interests, session)\n            else:\n                setattr(current_user, key, value)\n        \n        session.add(current_user)\n        await session.commit()\n        await session.refresh(current_user)\n    \n    return current_user
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/modules/users/user_routes.py b/server/modules/users/user_routes.py
+--- a/server/modules/users/user_routes.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/modules/users/user_routes.py	(date 1736153598782)
+@@ -6,12 +6,12 @@
+ from services.storage import upload_file
+ from .schemas import UserListRequestSchema, UserUpdateRequestSchema, AuthResponseSchema, UserAuthResponseSchema
+ from .jwt import create_access_token
+-from .dependencies import get_user_required
++from .dependencies import get_user_required, get_user_id_optional
+ 
+ from .enums import UserGenderEnum
+ 
+ from .models import User
+-from .service import update_user_interest
++from .service import update_user_interest, set_users_is_favorite
+ from .filters import UserFilter
+ 
+ from fastapi import UploadFile, File
+@@ -24,17 +24,22 @@
+ 
+ @router.get("/")
+ async def get_users(
+-    user_filter: UserFilter = FilterDepends(UserFilter),
++    current_user_id: Annotated[User, Depends(get_user_id_optional)],
++    user_filter: UserFilter = FilterDepends(UserFilter)
+ ) -> list[UserListRequestSchema]:
+     async with get_session() as session:
+         query = await session.execute(
+             user_filter.filter(
+                 select(User)
++                .where(User.id != current_user_id)
+             )
+         )
+ 
+         users = query.scalars().all()
+ 
++        if (current_user_id):
++            users = await set_users_is_favorite(users, current_user_id, session)
++
+         return users
+ 
+ @router.post("/")
+Index: server/modules/users/service.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from sqlalchemy.ext.asyncio import AsyncSession\nfrom .models import User, UserInterest\n\nfrom sqlalchemy import delete\n\nfrom core.logger import logger\n\nasync def update_user_interest(user: User, interest_ids: list[int], session: AsyncSession) -> list[UserInterest]:\n    old_interest_ids = [interest.id for interest in user.interests]\n\n    added_ids = list(set(interest_ids) - set(old_interest_ids))\n    removed_ids = list(set(old_interest_ids) - set(interest_ids))\n\n    await session.execute(\n        delete(UserInterest)\n        .where(UserInterest.user_id == user.id, UserInterest.interest_id.in_(removed_ids))\n    )\n\n    new_user_interests = [UserInterest(user_id=user.id, interest_id=interest_id) for interest_id in added_ids]\n\n    session.add_all(new_user_interests)\n\n    await session.commit()\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/modules/users/service.py b/server/modules/users/service.py
+--- a/server/modules/users/service.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/modules/users/service.py	(date 1736153084427)
+@@ -1,10 +1,9 @@
+ from sqlalchemy.ext.asyncio import AsyncSession
+-from .models import User, UserInterest
++from .models import User, UserInterest, UserFavorite
++from sqlalchemy import select
+ 
+ from sqlalchemy import delete
+ 
+-from core.logger import logger
+-
+ async def update_user_interest(user: User, interest_ids: list[int], session: AsyncSession) -> list[UserInterest]:
+     old_interest_ids = [interest.id for interest in user.interests]
+ 
+@@ -22,3 +21,15 @@
+ 
+     await session.commit()
+ 
++async def set_users_is_favorite(users: list[User], current_user_id: int, session: AsyncSession) -> list[User]:
++    user_ids = [user.id for user in users]
++    favorite_ids = (await session.execute(
++        select(UserFavorite.favorite_id)
++        .where(UserFavorite.user_id == current_user_id, UserFavorite.favorite_id.in_(user_ids))
++    )).scalars().all()
++
++    for user in users:
++        user.is_favorite = user.id in favorite_ids 
++    
++    return users
++    
+\ No newline at end of file
+Index: server/modules/users/models.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from sqlalchemy.orm import Mapped, mapped_column, relationship\nfrom sqlalchemy import Integer, String, Boolean, Text, ForeignKey, DateTime, func, event\n\nfrom core.db import Base\n\nfrom datetime import datetime\n\nfrom .jwt import get_password_hash\n\nfrom modules.common.models import Interest\n\nclass UserInterest(Base):\n\n    __tablename__ = \"user_interest\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n\n    user_id: Mapped[int] = mapped_column(ForeignKey(\"users.id\"))\n    interest_id: Mapped[int] = mapped_column(ForeignKey(\"interests.id\"))\n\n    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())\n\n    def __init__(self, user_id: int, interest_id: int):\n        self.user_id = user_id\n        self.interest_id = interest_id\n\n    def __repr__(self) -> str:\n        return f\"{self.user.username} - {self.interest.title}\"\n\n\nclass User(Base):\n\n    IS_ADMIN = True\n    NOT_ADMIN = False\n\n    __tablename__ = \"users\"\n\n    id: Mapped[int] = mapped_column(primary_key=True)\n    username: Mapped[str] = mapped_column(String(128))\n    _password: Mapped[str] = mapped_column(\"password\", String(256))\n    avatar: Mapped[str] = mapped_column(String(256), nullable=True)\n\n    is_admin: Mapped[bool] = mapped_column(Boolean(), default=NOT_ADMIN)\n\n    name: Mapped[str] = mapped_column(String(32))\n    surname: Mapped[str] = mapped_column(String(32))\n    city: Mapped[str] = mapped_column(String(32))\n    age: Mapped[int] = mapped_column(Integer())\n    gender: Mapped[str] = mapped_column(String(12))\n    about: Mapped[str] = mapped_column(Text(), nullable=True)\n\n    interests: Mapped[list[Interest]] = relationship(\"Interest\", secondary=UserInterest.__table__, backref=\"user\", lazy=\"subquery\")\n\n    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())\n\n    def __init__(self, username: str, password: str, name: str, surname: str, city: str, age: int, gender: str, avatar: str|None, about: str|None, is_admin: bool = NOT_ADMIN):\n        self.username = username\n        self._password = get_password_hash(password)\n        self.name = name\n        self.surname = surname\n        self.city = city\n        self.age = age\n        self.gender = gender\n        self.avatar = avatar\n        self.about = about\n        self.is_admin = is_admin\n\n    @property\n    def password(self):\n        return self._password\n\n    @password.setter\n    def password(self, password):\n        self._password = get_password_hash(password)\n\n    def __repr__(self) -> str:\n        return self.username
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/modules/users/models.py b/server/modules/users/models.py
+--- a/server/modules/users/models.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/modules/users/models.py	(date 1736152318535)
+@@ -1,5 +1,5 @@
+ from sqlalchemy.orm import Mapped, mapped_column, relationship
+-from sqlalchemy import Integer, String, Boolean, Text, ForeignKey, DateTime, func, event
++from sqlalchemy import Integer, String, Boolean, Text, ForeignKey, DateTime, func
+ 
+ from core.db import Base
+ 
+@@ -24,8 +24,18 @@
+         self.user_id = user_id
+         self.interest_id = interest_id
+ 
+-    def __repr__(self) -> str:
+-        return f"{self.user.username} - {self.interest.title}"
++class UserFavorite(Base):
++
++    __tablename__ = "user_favorite"
++
++    id: Mapped[int] = mapped_column(primary_key=True)
++
++    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
++    favorite_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
++
++    def __init__(self, user_id: int, favorite_id: int):
++        self.user_id = user_id
++        self.favorite_id = favorite_id
+ 
+ 
+ class User(Base):
+@@ -35,6 +45,8 @@
+ 
+     __tablename__ = "users"
+ 
++    is_favorite: bool = False
++
+     id: Mapped[int] = mapped_column(primary_key=True)
+     username: Mapped[str] = mapped_column(String(128))
+     _password: Mapped[str] = mapped_column("password", String(256))
+Index: server/modules/users/schemas.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from pydantic import BaseModel\nfrom typing import Optional\nfrom .enums import UserGenderEnum\nfrom modules.common.schemas import InterestResponseSchema\nfrom datetime import datetime\n\nclass UserListRequestSchema(BaseModel):\n    id: int\n    avatar: str|None\n    username: str\n    name: str\n    surname: str\n    city: str\n    age: int\n    gender: UserGenderEnum\n    about: str|None\n    interests: list[InterestResponseSchema]\n    registered_at: datetime\n\nclass UserUpdateRequestSchema(BaseModel):\n    username: Optional[str] = None\n    password: Optional[str] = None\n\n    name: Optional[str] = None\n    surname: Optional[str] = None    \n    city: Optional[str] = None\n    age: Optional[int] = None\n    gender: Optional[UserGenderEnum] = None\n    about: Optional[str] = None\n\n    interests: Optional[list[int]] = None\n\nclass UserLoginRequestSchema(BaseModel):\n    username: str\n    password: str\n        \n        \nclass UserAuthResponseSchema(BaseModel):\n    id: int\n    username: str\n    name: str\n    surname: str\n    city: str\n    age: int\n    gender: UserGenderEnum\n    about: str\n    interests: list[InterestResponseSchema]\n\n    class Config:\n        from_attributes = True\n\n\nclass AuthResponseSchema(BaseModel):\n    access: str\n    user: UserAuthResponseSchema
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/modules/users/schemas.py b/server/modules/users/schemas.py
+--- a/server/modules/users/schemas.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/modules/users/schemas.py	(date 1736160805003)
+@@ -1,4 +1,4 @@
+-from pydantic import BaseModel
++from pydantic import BaseModel, ConfigDict
+ from typing import Optional
+ from .enums import UserGenderEnum
+ from modules.common.schemas import InterestResponseSchema
+@@ -15,8 +15,19 @@
+     gender: UserGenderEnum
+     about: str|None
+     interests: list[InterestResponseSchema]
++    is_favorite: bool
+     registered_at: datetime
+ 
++class UserShortResponseSchema(BaseModel):
++
++    id: int
++    avatar: str|None
++    username: str
++    name: str
++    surname: str
++
++    model_config = ConfigDict(from_attributes=True)
++
+ class UserUpdateRequestSchema(BaseModel):
+     username: Optional[str] = None
+     password: Optional[str] = None
+Index: server/modules/users/dependencies.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from fastapi import Request, HTTPException, status, Depends\nfrom fastapi.security import HTTPBearer\nfrom jwt.exceptions import InvalidTokenError\nfrom typing import Optional, Annotated\nfrom core.db import get_session\nfrom sqlalchemy import select\nfrom datetime import datetime, timedelta\nfrom .models import User\nfrom .jwt import auth_scheme\n\nimport os\nimport jwt\n\nasync def get_user_required(token: Annotated[str, Depends(auth_scheme)]) -> User:    \n    JWT_SECRET_KEY = os.getenv(\"JWT_SECRET_KEY\")\n\n    credentials_exception = HTTPException(\n        status_code=status.HTTP_401_UNAUTHORIZED,\n        detail=\"Could not validate credentials\",\n        headers={\"WWW-Authenticate\": \"Bearer\"},\n    )\n\n    try: \n        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[\"HS256\"])\n        id: str = payload.get(\"id\")\n        exp: str = payload.get(\"exp\")\n\n        if id is None:\n            raise credentials_exception\n                \n        if datetime.fromtimestamp(float(exp)) - datetime.now() < timedelta(0):\n            raise credentials_exception\n\n        \n        async with get_session() as session:\n            query = await session.execute(\n                select(User)\n                .where(User.id == id)\n            )\n\n            user = query.scalars().first()\n\n            if (user is None):\n                raise credentials_exception\n\n            return user\n    except InvalidTokenError:\n        raise HTTPException(\n            status_code=status.HTTP_401_UNAUTHORIZED,\n            detail=\"Could not validate credentials\",\n            headers={\"WWW-Authenticate\": \"Bearer\"},\n        )\n\nasync def get_user_optional(token: Annotated[str, Depends(auth_scheme)]) -> User:    \n    JWT_SECRET_KEY = os.getenv(\"JWT_SECRET_KEY\")\n\n    credentials_exception = HTTPException(\n        status_code=status.HTTP_401_UNAUTHORIZED,\n        detail=\"Could not validate credentials\",\n        headers={\"WWW-Authenticate\": \"Bearer\"},\n    )\n\n    if (not token):\n        return None\n\n    try: \n        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[\"HS256\"])\n        id: str = payload.get(\"id\")\n        exp: str = payload.get(\"exp\")\n\n        if id is not None:\n            raise credentials_exception\n                \n        if datetime.fromtimestamp(float(exp)) - datetime.now() < timedelta(0):\n            raise credentials_exception\n\n        \n        async with get_session() as session:\n            query = await session.execute(\n                select(User)\n                .where(User.id == id)\n            )\n\n            user = query.scalars().first()\n\n            return user\n    except InvalidTokenError:\n        raise HTTPException(\n            status_code=status.HTTP_401_UNAUTHORIZED,\n            detail=\"Could not validate credentials\",\n            headers={\"WWW-Authenticate\": \"Bearer\"},\n        )
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/modules/users/dependencies.py b/server/modules/users/dependencies.py
+--- a/server/modules/users/dependencies.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/modules/users/dependencies.py	(date 1736153470988)
+@@ -50,7 +50,36 @@
+             detail="Could not validate credentials",
+             headers={"WWW-Authenticate": "Bearer"},
+         )
++    
++async def get_user_id_required(token: Annotated[str, Depends(auth_scheme)]) -> int:    
++    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ 
++    credentials_exception = HTTPException(
++        status_code=status.HTTP_401_UNAUTHORIZED,
++        detail="Could not validate credentials",
++        headers={"WWW-Authenticate": "Bearer"},
++    )
++
++    try: 
++        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
++        id: str = payload.get("id")
++        exp: str = payload.get("exp")
++
++        if id is None:
++            raise credentials_exception
++                
++        if datetime.fromtimestamp(float(exp)) - datetime.now() < timedelta(0):
++            raise credentials_exception
++
++        return id
++    
++    except InvalidTokenError:
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail="Could not validate credentials",
++            headers={"WWW-Authenticate": "Bearer"},
++        )
++
+ async def get_user_optional(token: Annotated[str, Depends(auth_scheme)]) -> User:    
+     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ 
+@@ -89,4 +118,32 @@
+             status_code=status.HTTP_401_UNAUTHORIZED,
+             detail="Could not validate credentials",
+             headers={"WWW-Authenticate": "Bearer"},
++        )
++
++async def get_user_id_optional(token: Annotated[str, Depends(auth_scheme)]) -> int:    
++    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
++
++    credentials_exception = HTTPException(
++        status_code=status.HTTP_401_UNAUTHORIZED,
++        detail="Could not validate credentials",
++        headers={"WWW-Authenticate": "Bearer"},
++    )
++
++    if (not token):
++        return None
++    
++    try: 
++        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
++        id: str = payload.get("id")
++        exp: str = payload.get("exp")
++                
++        if datetime.fromtimestamp(float(exp)) - datetime.now() < timedelta(0):
++            raise credentials_exception
++
++        return id
++    except InvalidTokenError:
++        raise HTTPException(
++            status_code=status.HTTP_401_UNAUTHORIZED,
++            detail="Could not validate credentials",
++            headers={"WWW-Authenticate": "Bearer"},
+         )
+\ No newline at end of file
+Index: server/core/routes.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from fastapi import APIRouter\n\nfrom modules.common.routes import router as common_router\nfrom modules.users.user_routes import router as users_router\nfrom modules.users.auth_routes import router as auth_router\n\nrouter = APIRouter(\n    prefix=\"/api\"\n)\n\nrouter.include_router(common_router)\nrouter.include_router(users_router)\nrouter.include_router(auth_router)
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/core/routes.py b/server/core/routes.py
+--- a/server/core/routes.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/core/routes.py	(date 1736156481019)
+@@ -3,6 +3,8 @@
+ from modules.common.routes import router as common_router
+ from modules.users.user_routes import router as users_router
+ from modules.users.auth_routes import router as auth_router
++from modules.users.favourite_routes import router as favourite_router
++from modules.chats.routes import router as chats_router
+ 
+ router = APIRouter(
+     prefix="/api"
+@@ -10,4 +12,6 @@
+ 
+ router.include_router(common_router)
+ router.include_router(users_router)
+-router.include_router(auth_router)
+\ No newline at end of file
++router.include_router(auth_router)
++router.include_router(favourite_router)
++router.include_router(chats_router)
+\ No newline at end of file
+Index: server/alembic/env.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import asyncio\nfrom logging.config import fileConfig\n\nfrom sqlalchemy import pool\nfrom sqlalchemy.engine import Connection\nfrom sqlalchemy.ext.asyncio import async_engine_from_config\n\nfrom alembic import context\n\nfrom core.db import Base, DATABASE_URL\n\n# import models\n\nfrom modules.common.models import Interest\nfrom modules.users.models import User, UserInterest\n\n# this is the Alembic Config object, which provides\n# access to the values within the .ini file in use.\nconfig = context.config\n\nconfig.set_main_option(\"sqlalchemy.url\", DATABASE_URL)\n\n# Interpret the config file for Python logging.\n# This line sets up loggers basically.\nif config.config_file_name is not None:\n    fileConfig(config.config_file_name)\n\n# add your model's MetaData object here\n# for 'autogenerate' support\n# from myapp import mymodel\n# target_metadata = mymodel.Base.metadata\ntarget_metadata = Base.metadata\n\n# other values from the config, defined by the needs of env.py,\n# can be acquired:\n# my_important_option = config.get_main_option(\"my_important_option\")\n# ... etc.\n\n\ndef run_migrations_offline() -> None:\n    \"\"\"Run migrations in 'offline' mode.\n\n    This configures the context with just a URL\n    and not an Engine, though an Engine is acceptable\n    here as well.  By skipping the Engine creation\n    we don't even need a DBAPI to be available.\n\n    Calls to context.execute() here emit the given string to the\n    script output.\n\n    \"\"\"\n    url = config.get_main_option(\"sqlalchemy.url\")\n    context.configure(\n        url=url,\n        target_metadata=target_metadata,\n        literal_binds=True,\n        dialect_opts={\"paramstyle\": \"named\"},\n    )\n\n    with context.begin_transaction():\n        context.run_migrations()\n\n\ndef do_run_migrations(connection: Connection) -> None:\n    context.configure(connection=connection, target_metadata=target_metadata)\n\n    with context.begin_transaction():\n        context.run_migrations()\n\n\nasync def run_async_migrations() -> None:\n    \"\"\"In this scenario we need to create an Engine\n    and associate a connection with the context.\n\n    \"\"\"\n\n    connectable = async_engine_from_config(\n        config.get_section(config.config_ini_section, {}),\n        prefix=\"sqlalchemy.\",\n        poolclass=pool.NullPool,\n    )\n\n    async with connectable.connect() as connection:\n        await connection.run_sync(do_run_migrations)\n\n    await connectable.dispose()\n\n\ndef run_migrations_online() -> None:\n    \"\"\"Run migrations in 'online' mode.\"\"\"\n\n    asyncio.run(run_async_migrations())\n\n\nif context.is_offline_mode():\n    run_migrations_offline()\nelse:\n    run_migrations_online()\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/alembic/env.py b/server/alembic/env.py
+--- a/server/alembic/env.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/alembic/env.py	(date 1736156512509)
+@@ -12,7 +12,8 @@
+ # import models
+ 
+ from modules.common.models import Interest
+-from modules.users.models import User, UserInterest
++from modules.users.models import User, UserInterest, UserFavorite
++from modules.chats.models import Chat, Message
+ 
+ # this is the Alembic Config object, which provides
+ # access to the values within the .ini file in use.
+Index: docker-compose.dev.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>version: '3.8'\n\nservices:\n\n  client:\n    build:\n      context: ./client\n      dockerfile: Dockerfile\n    ports:\n      - \"3000:3000\"\n    volumes: \n      - ./client:/app\n    command: bash -c \"npm i && npm run start\"\n\n\n  server:\n    build:\n      context: ./server\n      dockerfile: Dockerfile\n    ports:\n      - \"8000:8000\"\n    env_file: \"server/.env\"\n    command: bash -c \"pip install -r requirements.txt && uvicorn core.app:app --host 0.0.0.0 --port 8000 --reload\"\n    volumes: \n      - ./server:/app\n    depends_on:\n      - db\n\n  db:\n    image: postgres:16\n    restart: always\n    env_file: \"server/.env\"\n    ports: \n      - \"54321:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/docker-compose.dev.yml b/docker-compose.dev.yml
+--- a/docker-compose.dev.yml	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/docker-compose.dev.yml	(date 1736011962344)
+@@ -20,7 +20,7 @@
+     ports:
+       - "8000:8000"
+     env_file: "server/.env"
+-    command: bash -c "pip install -r requirements.txt && uvicorn core.app:app --host 0.0.0.0 --port 8000 --reload"
++    command: bash -c "pip install -r requirements.txt && alembic upgrade head && uvicorn core.app:app --host 0.0.0.0 --port 8000 --reload"
+     volumes: 
+       - ./server:/app
+     depends_on:
+Index: server/core/app.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from fastapi import FastAPI\nfrom dotenv import load_dotenv\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.staticfiles import StaticFiles\n\nfrom .routes import router as api_router\n\nfrom .config import *\n\nload_dotenv()\n\napp = FastAPI(\n    lifespan=lifespan,\n)\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\"*\"],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\napp.include_router(api_router)\n\napp.mount(\"/media\", StaticFiles(directory=\"media\"), name=\"media\")\n\nfrom .admin import *
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/core/app.py b/server/core/app.py
+--- a/server/core/app.py	(revision 46c0bcc050faf4a33ed21d64e9a7de48e7ebd832)
++++ b/server/core/app.py	(date 1736160323848)
+@@ -1,4 +1,4 @@
+-from fastapi import FastAPI
++from fastapi import FastAPI, WebSocket
+ from dotenv import load_dotenv
+ from fastapi.middleware.cors import CORSMiddleware
+ from fastapi.staticfiles import StaticFiles
+@@ -25,4 +25,6 @@
+ 
+ app.mount("/media", StaticFiles(directory="media"), name="media")
+ 
+-from .admin import *
+\ No newline at end of file
++from .admin import *
++
++from modules.chats.ws_handlers import *
+\ No newline at end of file

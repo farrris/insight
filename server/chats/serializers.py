@@ -30,5 +30,5 @@ class ChatSerializer:
             id=self.resource.pk,
             to_user=UserSerializer(self.resource.get_to_user(auth_user=self.user)).short(),
             last_message=MessageSerializer(self.resource.last_message).display(),
-            count_unread_messages=self.resource.count_unread_messages(auth_user=self.user)
+            unread_count=self.resource.count_unread_messages(auth_user=self.user)
         ).dict()

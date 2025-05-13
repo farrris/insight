@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from ninja import Schema
 from typing import Optional
 
@@ -64,6 +66,15 @@ class UserLoginOut(Schema):
     gender: UserGenderEnum
     about: str
     interests: list[InterestOut]
+    is_superuser: bool
+
+class PostOut(Schema):
+    id: int
+    content: str
+    created_at: datetime
+
+class PostIn(Schema):
+    content: str
 
 class MyTokenObtainPairOutSchema(Schema):
     refresh: str

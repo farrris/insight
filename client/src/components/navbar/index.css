@@ -1,0 +1,70 @@
+.modern-navbar {
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px 0;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #3a3a3a;
+}
+
+.brand-name {
+    margin-left: 10px;
+    font-size: 1.2rem;
+}
+
+.nav-link-item {
+    display: flex;
+    align-items: center;
+    color: #4a4a4a !important;
+    margin: 0 15px;
+    padding: 8px 12px !important;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.nav-link-item:hover {
+    background-color: #f5f5f5;
+    color: #2a2a2a !important;
+}
+
+.nav-icon {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+.user-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    color: #4a4a4a;
+}
+
+.user-icon {
+    margin-right: 8px;
+    font-size: 1.3rem;
+}
+
+/* Убедитесь, что эти стили применяются */
+.user-dropdown .dropdown-toggle {
+  display: flex !important;
+  align-items: center;
+  padding-right: 12px !important;
+}
+
+.user-dropdown .dropdown-toggle::after {
+  display: none !important; /* Полностью убираем стандартную стрелку */
+}
+
+.user-dropdown .bi-chevron-down {
+  margin-left: 4px;
+  transition: transform 0.2s ease;
+  opacity: 1 !important; /* Гарантируем, что иконка видна */
+  font-size: 0.75rem;
+}
+
+.user-dropdown.show .bi-chevron-down {
+  transform: rotate(180deg);
+}

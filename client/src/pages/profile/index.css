@@ -1,0 +1,56 @@
+.profile-page {
+  min-height: 100vh;
+}
+
+.profile-container {
+  max-width: 1200px;
+}
+
+.profile-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.form-input {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 15px;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
+.form-textarea {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  resize: none;
+}
+
+.submit-btn {
+  background-color: #4a90e2;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.submit-btn:hover {
+  background-color: #3a7bc8;
+  transform: translateY(-2px);
+}
+
+h2 {
+  color: #333;
+  font-weight: 600;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 6px;
+}

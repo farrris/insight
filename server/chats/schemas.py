@@ -1,6 +1,9 @@
 from ninja import Schema
 from users.schemas import UserShortOut
 
+class MessageChat(Schema):
+
+    message: str
 class MessageCreate(Schema):
 
     to_user_id: int
@@ -19,4 +22,4 @@ class ChatOut(Schema):
     id: int
     to_user: UserShortOut
     last_message: MessageOut
-    count_unread_messages: int
+    unread_count: int

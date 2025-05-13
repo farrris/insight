@@ -1,24 +1,92 @@
 .chat-card {
-    margin-bottom: 8%;
-    width: 400px;
-    padding: 10%;
-    border-radius: 34px;
-    padding: 3%;
-    background-color: #fff;
-    border: 1px solid #000;
+    display: flex;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.selected-chat-card {
-    margin-bottom: 8%;
-    width: 400px;
-    padding: 10%;
-    border-radius: 34px;
-    padding: 3%;
-    background-color: #808080;;
-    color: white;
-    border: 1px solid #000;
+.chat-card:hover {
+    background-color: #f8f9fa;
+}
+
+.chat-card.selected {
+    background-color: #e3f2fd;
+}
+
+.chat-avatar-wrapper {
+    position: relative;
+    margin-right: 12px;
+}
+
+.chat-avatar {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+}
+
+.unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 10px;
 }
 
 .chat-info {
-    margin-left: 5%;
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-user-name {
+    margin: 0;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-time {
+    color: #757575;
+    font-size: 12px;
+}
+
+.chat-preview {
+    margin: 5px 0 0;
+    color: #757575;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+}
+
+.unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 0.7rem;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.unread-badge-name {
+    margin-left: 8px;
+    font-size: 0.7rem;
+    min-width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.unread-message {
+    font-weight: bold;
+    color: #000;
+}
+
+.chat-card.selected .unread-message {
+    color: #fff;
 }

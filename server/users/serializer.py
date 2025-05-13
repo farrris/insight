@@ -14,12 +14,16 @@ class UserSerializer:
 
         interests = [InterestSerializer(interest).display() for interest in self.resource.interests.all()]
 
-        print(self.resource.favorites.values_list("pk", flat=True))
+        if (self.user):
+            is_favorite = self.resource.pk in self.user.favorites.values_list("pk", flat=True) if self.user.pk else False
+        else:
+            is_favorite = False
+
 
         return UserOut(
             id=self.resource.pk,
             avatar=self.resource.avatar,
-            is_favorite=self.resource.pk in self.user.favorites.values_list("pk", flat=True) if self.user.pk else False, 
+            is_favorite=is_favorite,
             username=self.resource.username,
             name=self.resource.name,
             surname=self.resource.surname,
@@ -28,7 +32,7 @@ class UserSerializer:
             gender=self.resource.gender,
             about=self.resource.about,
             interests=interests,
-            registered_at=str(self.resource.registered_at)
+            registered_at=str(self.resource.registered_at),
         ).dict()
     
     def short(self):
