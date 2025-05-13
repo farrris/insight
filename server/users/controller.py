@@ -50,7 +50,7 @@ class UserController:
 
     @route.get("/{int:user_id}/posts")
     def get_user_posts(self, request: HttpRequest, user_id: int):
-        posts = Post.objects.filter(user_id=user_id)
+        posts = Post.objects.filter(user_id=user_id).order_by('-created_at')
 
         return [PostOut.from_orm(post) for post in posts]
 
